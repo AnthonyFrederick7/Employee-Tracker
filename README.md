@@ -2,7 +2,7 @@
 
 ## Description
 
-[Walkthrough Video Link](https://anthonyfrederick7.github.io/portfolio/)
+[Walkthrough Video Link](https://drive.google.com/file/d/1mPPek_zUHG9R-4iWEPBwVOPyfdBxkn1X/view)
 
   - The employee tracker was made to make managers track and control their employees.
 
