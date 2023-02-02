@@ -58,52 +58,56 @@ function handleInitialChoice({ action }) {
         }
 }
 
+const employeeRoles = [];
+const employeeChoices = [];
+const departmentChoices = [];
+
 // Views Employees in database
 async function viewEmployees() {
     connection.query(
         "SELECT employee.id, employee.first_name, employee.last_name, employee.role_id, employee.manager_id, role.title, role.salary, role.id, department.id FROM employee LEFT JOIN role ON employee.role_id = role.id LEFT JOIN department ON role.department_id = department.id", 
-        function(err, result) {
-          if (err) throw err;
-          console.table(result);
-          init()
+        function(err, data) {
+            if (err) throw err;
+            console.table(data);
+            init()
 })}
 
-var employeeRoles = [];
-var employeeChoices = [];
-var departmentChoices = [];
+// Looks up all roles
+async function lookupRole(){  
+    connection.query("SELECT * FROM role", function (err, data) {
+        if (err) throw err;
+        for (i = 0; i < data.length; i++) {
+            employeeRoles.push(data[i].id + "-" + data[i].title)
+        }
+    })
+}
 
-function lookuprole(){  
-  
-  connection.query("SELECT * FROM role", function (err, data) {
-      if (err) throw err;
-      for (i = 0; i < data.length; i++) {
-          employeeRoles.push(data[i].id + "-" + data[i].title)
-      }
-   })
-  }
-
-function lookupEmployee(){  
+// Looks up all employees
+async function lookupEmployees(){  
+    return new Promise(resolve => {
    connection.query("SELECT * FROM employee", function (err, data) {
-       if (err) throw err;
-       for (i = 0; i < data.length; i++) {
-           employeeChoices.push(data[i].id + "-" + data[i].first_name+" "+ data[i].last_name)
-       }
-   }) 
-  }
+        if (err) throw err;
+        for (i = 0; i < data.length; i++) {
+            employeeChoices.push(data[i].id + "-" + data[i].first_name+" "+ data[i].last_name)
+        }
+        resolve (employeeChoices)
+    })})
+}
 
-function lookupDepts(){
+// Looks up all departments
+async function lookupDepts(){
 connection.query("SELECT * FROM department", function (err, data) {
-  if (err) throw err;
-  for (i = 0; i < data.length; i++) {
-      departmentChoices.push(data[i].id + "-" + data[i].name)
-  }
+    if (err) throw err;
+    for (i = 0; i < data.length; i++) {
+        departmentChoices.push(data[i].id + "-" + data[i].name)
+    }
 })
 }
 
 // Adds Employees to database
 async function addEmployee() {
-    lookuprole()
-    lookupEmployee()
+    lookupRole()
+    lookupEmployees()
     inquirer.prompt ([
         {
             message: "What's the employee's first name?",
@@ -124,43 +128,49 @@ async function addEmployee() {
         {
             message: "Who's the employee's manager?",
             type: "list",
-            choices:employeeChoices,
+            choices: employeeChoices,
             name: "managerName"
         }
 ]).then(function(answer) {
     connection.query(`INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES ('${answer.firstName}', '${answer.lastName}', ${answer.roleName[0]}, ${answer.managerName[0]});`, (err, res) => {
         if (err) throw err;
-  
-        console.log("1 new employee added: " + answer.firstName + " " + answer.lastName);
+        console.log("Employee added: " + answer.firstName + " " + answer.lastName);
         init()
 })});}
 
 // Updates the employees role
 async function updateEmployeeRole() {
+    await lookupEmployees()
+    await lookupRole()
     inquirer.prompt ([
         {
             message: "Which employee's role would you like to update?",
             type: "list",
-            choices: "",
+            choices: employeeChoices,
             name: "employeeName"
         },
         {
             message: "Which role do you want to assign the selected employee?",
             type: "list",
-            choices: "",
+            choices: employeeRoles,
             name:"newRole"
         }
-])}
+]) .then(function(answer) {
+    connection.query('UPDATE employee SET role_id=? WHERE first_name= ?',[answer.newRole[0], answer.employeeName],function(err, res) {
+        if (err) throw err;
+        console.log(`${answer.employeeName.split('1,-')}s role has been changed to ${answer.newRole}`);
+        init()
+})});}
 
 // Views all employees roles
 async function viewAllRoles() {
     connection.query(
-        "SELECT role.id, role.title, role.salary, role.department_id, department.id, department.name FROM role LEFT JOIN department on role.department_id = department.id",
+        "SELECT role.title, role.salary, role.department_id, department.name FROM role LEFT JOIN department on role.department_id = department.id",
         function(err, result) {
             if (err) throw err;
             console.table(result);
             init();
-         }
+        }
         );
 }
 
@@ -198,10 +208,8 @@ async function viewDepartments() {
         if (err) throw err;
         console.table(result);
         init();
-      }
-    );
-}
-
+    }
+);}
 
 // Initialize app function
 async function init() {
